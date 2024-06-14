@@ -1,0 +1,84 @@
+import serial,csv
+import datetime
+import numpy as np
+import time
+import datetime
+import COM
+import signal
+import sys
+
+file = " "
+
+def timeout(signum, frame):
+    print('Alarm time reached. Exiting the script')
+    sys.exit(0)
+
+def getSUNA():
+    signal.signal(signal.SIGALRM, timeout)
+    signal.alarm(120) # set alarm for 2 minutes
+    line = ''
+    count=0
+    nitrate_list=[]
+    nitrogen_list = []
+    now = datetime.datetime.now()
+    date = now.strftime('%Y-%m-%d %H:%M:%S')
+    print('Starting SUNA at ' + str(date))
+    try:
+        port_open = False
+        suna = serial.Serial(COM.SUNA,COM.SUNA_baud,timeout=10)
+        print('connected to SUNA')
+        port_open = True
+    except:
+        print('no connection, check USB assignment')
+    
+    if port_open:
+        try:
+            suna.write('\n'.encode('utf-8'))
+            time.sleep(5)
+            print('wake up')
+            while True:
+                line = suna.readline().decode('latin-1')
+                print(line)
+                if "CMD" in line:
+                    print('CMD promped recieved')
+                    break
+                if "SUNA" in line:
+                    print('SUNA was not in polled mode. Attemping again')
+                    print('exit out')
+                    suna.write('exit\n'.encode('utf-8'))
+                    time.sleep(10)
+                    print('wake up')
+                    suna.write('\n'.encode('utf-8'))
+            suna.write('measure 3\n'.encode('utf-8'))
+            print('measuring...')
+            count = 0
+            while count < 3:
+                try:
+                    line=suna.readline().decode('latin-1')
+                    print ('Line: '+line+'\n')
+                    if 'SATSLF'+str(COM.SUNA_SN) in line:
+                        data = line.split(',')
+                        count+=1
+                        #print(count)
+                        if float(data[3]) > -2:
+                            return (date, float(data[3]),float(data[4]))
+                            break
+                        else:
+                            return (date,'nan','nan')
+            
+                except:
+                    print('error reading lines')          
+        except:
+            return (date,'nan','nan')
+    else:
+        return (date,'nan','nan')
+    
+signal.alarm(0) #disable alarm
+    
+date,uM, PPM = getSUNA()
+print(date, uM, PPM)
+suna_data = (date, uM, PPM)
+print ('Write file to GDrive')
+f= open('file','a')
+writer = csv.writer(f,delimiter = ',')
+writer.writerow(suna_data)
