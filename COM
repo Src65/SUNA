@@ -1,0 +1,6 @@
+EXO_COM = '/dev/ttyUSB*'
+EXO_baud = '38400'
+SUNA = '/dev/ttyUSB*' 
+SUNA_baud = '57600'
+SUNA_SN = '0804'
+ADCP_COM = '/dev/ADCP'
